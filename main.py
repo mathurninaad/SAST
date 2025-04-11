@@ -1,16 +1,17 @@
 import ast
 import re
 
-class MyVisitor(ast.NodeVisitor):
+class SASTDetector(ast.NodeVisitor):
     def __init__(self):
-        # Problems in Python code
+        # hardcoded passwords
         self.sastP = []
 
         # unused variables and used variables
         self.unv = []
         self.uv = []
 
-
+        # dangerous os functions
+        self.dangerous_func = []
 
     def check_hardcoded(self, target):
         name = target.id.lower()
@@ -20,6 +21,30 @@ class MyVisitor(ast.NodeVisitor):
             self.sastP.append((target.lineno, name))
             return True
         return False
+
+    def get_func_name(self, node):
+        pass
+
+    def visit_Call(self, node):
+        func_name = self.get_func_name(node.func)
+        danger_keywords = {"system", "popen", "call", "Popen", "eval", "exec", "compile"}
+        if any(keyword in func_name for keyword in danger_keywords):
+            self.dangerous_func.append((node.lineno, func_name))
+
+        self.generic_visit(node)
+
+    def get_func_name(self, func):
+        if isinstance(func, ast.Attribute): # means that we are calling the function of an object
+            parts = []
+            while isinstance(func, ast.Attribute):
+                parts.append(func.attr)
+                func = func.value
+            if isinstance(func, ast.Name): # we are calling the function
+                parts.append(func.id)
+            return ".".join(reversed(parts))
+        elif isinstance(func, ast.Name):
+            return func.id
+        return ""
 
     def visit_Assign(self, node):
         for target in node.targets:
@@ -42,6 +67,8 @@ class MyVisitor(ast.NodeVisitor):
         self.generic_visit(node)
 
     def printIssues(self):
+        for i in self.dangerous_func:
+            print(f"Issue on line: {i[0]} [Dangerous Function]. Function name: {i[1]}")
         for i in self.unv:
             found = False
             for j in self.uv:
@@ -54,7 +81,7 @@ class MyVisitor(ast.NodeVisitor):
             print(f"Issue on line: {issue[0]} [Possibility of Hardcoded password]. variable Name: {issue[1]}")
 
 if __name__ == '__main__':
-    visitor = MyVisitor()
+    visitor = SASTDetector()
     with open('test.py') as code:
         code = code.read()
         tree = ast.parse(code)
