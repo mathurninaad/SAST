@@ -1,5 +1,7 @@
 import ast
 import re
+import sys
+
 
 class SASTDetector(ast.NodeVisitor):
     def __init__(self):
@@ -100,9 +102,14 @@ class SASTDetector(ast.NodeVisitor):
 
 if __name__ == '__main__':
     visitor = SASTDetector()
-    with open('test.py') as code:
+    if len(sys.argv) < 2:
+        print("Usage: python main.py [filename].py")
+        sys.exit(1)
+    try:
+        code = open(f'{sys.argv[1]}')
         code = code.read()
         tree = ast.parse(code)
-        print(ast.dump(tree, indent=4))
         visitor.visit(tree)
         visitor.printIssues()
+    except Exception as e:
+        print(e)
