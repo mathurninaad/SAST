@@ -13,6 +13,9 @@ class SASTDetector(ast.NodeVisitor):
         # dangerous os functions
         self.dangerous_func = []
 
+        # sql strings
+        self.sql_strings = []
+
     def check_hardcoded(self, target):
         name = target.id.lower()
         pattern = r"\b\w*(pass(word|wd)?|pwd|psswd)\w*\b" # copied pattern from GPT
@@ -21,9 +24,6 @@ class SASTDetector(ast.NodeVisitor):
             self.sastP.append((target.lineno, name))
             return True
         return False
-
-    def get_func_name(self, node):
-        pass
 
     def visit_Call(self, node):
         func_name = self.get_func_name(node.func)
@@ -79,6 +79,24 @@ class SASTDetector(ast.NodeVisitor):
 
         for issue in self.sastP:
             print(f"Issue on line: {issue[0]} [Possibility of Hardcoded password]. variable Name: {issue[1]}")
+
+        for sql in self.sql_strings:
+            print(f"Issue on line: {sql[0]}. [Possible SQL injection]")
+
+
+    def visit_Constant(self, node):
+        sql_keywords_major = {
+            "select", "insert", "update", "delete", "drop", "create", "alter", "truncate",
+            "replace", "rename", "grant", "revoke", "union", "intersect", "except",
+            "load", "merge", "call", "join"
+        }
+        if isinstance(node.value, str):
+            value_lower = node.value.lower()
+            for keyword in sql_keywords_major:
+                if keyword in value_lower:
+                    self.sql_strings.append((node.lineno, node.value))
+                    break
+        self.generic_visit(node)
 
 if __name__ == '__main__':
     visitor = SASTDetector()
