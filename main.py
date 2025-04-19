@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 import ast
 import re
@@ -30,12 +30,23 @@ class SASTDetector(ast.NodeVisitor):
         return False
 
     def visit_Call(self, node):
+
         func_name = self.get_func_name(node.func)
         danger_keywords = {"system", "popen", "call", "Popen", "eval", "exec", "compile"}
         if any(keyword in func_name for keyword in danger_keywords):
             self.dangerous_func.append((node.lineno, func_name))
-
+        if func_name.endswith("execute"):
+            if len(node.args) == 1:
+                if isinstance(node.args[0], (ast.JoinedStr, ast.BinOp, ast.Call)):
+                    self.sql_strings.append((node.lineno, "Unsafe SQL query in 'execute'"))
+            elif len(node.args) >= 2:
+                if isinstance(node.args[0], (ast.JoinedStr, ast.BinOp, ast.Call)):
+                    pass
+                else:
+                    self.sql_strings.append((node.lineno, "Possibly unsafe SQL query in 'execute'"))
         self.generic_visit(node)
+
+
 
     def get_func_name(self, func):
         if isinstance(func, ast.Attribute): # means that we are calling the function of an object
@@ -85,22 +96,8 @@ class SASTDetector(ast.NodeVisitor):
             print(f"Issue on line: {issue[0]} [Possibility of Hardcoded password]. variable Name: {issue[1]}")
 
         for sql in self.sql_strings:
-            print(f"Issue on line: {sql[0]}. [Possible SQL injection]")
+            print(f"Issue on line: {sql[0]}. [{sql[1]}]")
 
-
-    def visit_Constant(self, node):
-        sql_keywords_major = {
-            "select", "insert", "update", "delete", "drop", "create", "alter", "truncate",
-            "replace", "rename", "grant", "revoke", "union", "intersect", "except",
-            "load", "merge", "call", "join"
-        }
-        if isinstance(node.value, str):
-            value_lower = node.value.lower()
-            for keyword in sql_keywords_major:
-                if keyword in value_lower:
-                    self.sql_strings.append((node.lineno, node.value))
-                    break
-        self.generic_visit(node)
 
 if __name__ == '__main__':
     visitor = SASTDetector()
