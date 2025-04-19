@@ -15,7 +15,9 @@ Simple yet powerful Static Application Security Testing (SAST) tool built for Py
 
 ```bash
 python main.py [filename].py
-
+(or)
+chmod +x main.py
+./main.py [filename].py
 ```
 ---
 
