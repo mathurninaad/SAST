@@ -25,19 +25,39 @@ chmod +x main.py
 Given the following Python file test.py:
 
 ```python
-password = "admin123"
-os.system("rm -rf /")
-query = "SELECT * FROM users WHERE id = 1"
-unused_var = 42
+import os
+import subprocess
+import sqlite3
+
+password123 = "secret"  # hardcoded password
+unused_var = 42         # unused variable
+
+conn = sqlite3.connect(":memory:")
+cursor = conn.cursor()
+
+def example():
+    passwrd = "12345"  # hardcoded password
+    user = "admin"
+    cursor.execute("SELECT * FROM users WHERE name = '" + user + "'")  # unsafe SQL
+
+    result = subprocess.call("ls -la", shell=True)  # dangerous function
+    another_unused = 100  # unused variable
+    print("Executed.")
+
+example()
 ```
 
 ### Output
 
 ```bash
-Issue on line: 4 [Dangerous Function]. Function name: os.system
-Issue on line: 3 [Unused variable]. variable name: password
-Issue on line: 5 [Unused variable]. variable name: query
+Issue on line: 14 [Dangerous Function]. Function name: cursor.execute
+Issue on line: 16 [Dangerous Function]. Function name: subprocess.call
+Issue on line: 5 [Unused variable]. variable name: password123
 Issue on line: 6 [Unused variable]. variable name: unused_var
-Issue on line: 3 [Possibility of Hardcoded password]. variable Name: password
-Issue on line: 5. [Possible SQL injection]
+Issue on line: 12 [Unused variable]. variable name: passwrd
+Issue on line: 16 [Unused variable]. variable name: result
+Issue on line: 17 [Unused variable]. variable name: another_unused
+Issue on line: 5 [Possibility of Hardcoded password]. variable Name: password123
+Issue on line: 12 [Possibility of Hardcoded password]. variable Name: passwrd
+Issue on line: 14. [Unsafe SQL query in 'execute']
 ```
